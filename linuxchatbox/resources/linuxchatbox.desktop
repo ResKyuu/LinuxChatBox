@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=LinuxChatbox
+Comment=VRChat chatbox overlay for Linux
+Exec=linuxchatbox
+Icon=linuxchatbox
+Terminal=false
+Type=Application
+Categories=Utility;AudioVideo;
+Keywords=VRChat;OSC;Music;Chatbox;MPRIS;
+StartupNotify=true
