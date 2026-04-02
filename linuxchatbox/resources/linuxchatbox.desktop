@@ -8,3 +8,4 @@ Type=Application
 Categories=Utility;AudioVideo;
 Keywords=VRChat;OSC;Music;Chatbox;MPRIS;
 StartupNotify=true
+StartupWMClass=linuxchatbox

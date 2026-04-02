@@ -1,11 +1,13 @@
 """Main application window for LinuxChatbox."""
 
 import os
+from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QStatusBar, QTabWidget,
 )
+from PyQt6.QtGui import QIcon
 
 from ..workers.media_worker import MediaWorker
 from ..core.config import load_config, save_config
@@ -242,9 +244,29 @@ class LinuxChatbox(QMainWindow):
         self._build_ui()
         self.setStyleSheet(STYLESHEET)
         
+        # Set window icon
+        self._set_window_icon()
+        
         # Restore persisted OSC port
         self.media_tab.port_spin.setValue(self._loaded_port)
         self._worker.set_osc_port(self._loaded_port)
+
+    def _set_window_icon(self):
+        """Set the window icon from the resources directory."""
+        # Try multiple possible icon locations
+        icon_paths = [
+            # Installed location
+            Path.home() / ".local/share/icons/hicolor/256x256/apps/linuxchatbox.png",
+            # Package resources directory
+            Path(__file__).parent.parent / "resources/icon.png",
+            # Development directory
+            Path(__file__).parent.parent.parent / "linuxchatbox/resources/icon.png",
+        ]
+        
+        for icon_path in icon_paths:
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
+                break
 
     def _build_ui(self):
         central = QWidget()
