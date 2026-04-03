@@ -46,46 +46,6 @@ class DiscordTab(QWidget):
         
         layout.addWidget(rpc_group)
         
-        # ── VRChat OSC Settings Group ──
-        vrchat_group = QGroupBox("VRChat OSC Listener")
-        vrchat_layout = QVBoxLayout(vrchat_group)
-        
-        # Port setting
-        port_layout = QHBoxLayout()
-        port_label = QLabel("VRChat OSC Port:")
-        port_label.setObjectName("portLabel")
-        self.vrchat_port_spin = QSpinBox()
-        self.vrchat_port_spin.setRange(1024, 65535)
-        self.vrchat_port_spin.setValue(9001)
-        self.vrchat_port_spin.setMaximumWidth(100)
-        port_help = QLabel("(Port where VRChat sends data)")
-        port_help.setObjectName("optLabel")
-        port_layout.addWidget(port_label)
-        port_layout.addWidget(self.vrchat_port_spin)
-        port_layout.addWidget(port_help, 1)
-        vrchat_layout.addLayout(port_layout)
-        
-        # VRChat info display
-        world_layout = QHBoxLayout()
-        world_label = QLabel("World:")
-        world_label.setObjectName("optLabel")
-        self.world_value = QLabel("No data")
-        self.world_value.setObjectName("artistLabel")
-        world_layout.addWidget(world_label)
-        world_layout.addWidget(self.world_value, 1)
-        vrchat_layout.addLayout(world_layout)
-        
-        players_layout = QHBoxLayout()
-        players_label = QLabel("Players:")
-        players_label.setObjectName("optLabel")
-        self.players_value = QLabel("0")
-        self.players_value.setObjectName("artistLabel")
-        players_layout.addWidget(players_label)
-        players_layout.addWidget(self.players_value, 1)
-        vrchat_layout.addLayout(players_layout)
-        
-        layout.addWidget(vrchat_group)
-        
         # ── Current Presence Preview ──
         preview_group = QGroupBox("Discord Presence Preview")
         preview_layout = QVBoxLayout(preview_group)
@@ -107,8 +67,7 @@ class DiscordTab(QWidget):
             "Discord Rich Presence shows:\n"
             "• Currently focused application\n"
             "• Currently playing song from MPRIS\n\n"
-            "Works independently - VRChat OSC not required!\n"
-            "VRChat world info displayed if OSC is enabled below."
+            "Works completely independently!"
         )
         info_text.setObjectName("optLabel")
         info_text.setWordWrap(True)
@@ -129,11 +88,6 @@ class DiscordTab(QWidget):
         # Refresh style
         self.status_value.style().unpolish(self.status_value)
         self.status_value.style().polish(self.status_value)
-        
-    def update_vrchat_data(self, world_name, player_count):
-        """Update VRChat world and player display."""
-        self.world_value.setText(world_name or "No data")
-        self.players_value.setText(str(player_count) if player_count >= 0 else "0")
         
     def update_preview(self, preview_text):
         """Update the Discord presence preview."""

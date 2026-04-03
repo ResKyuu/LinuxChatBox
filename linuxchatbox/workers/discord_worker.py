@@ -125,13 +125,23 @@ class DiscordWorker(QThread):
             return False
             
     def _disconnect(self):
-        """Disconnect from Discord RPC."""
+        """Disconnect from Discord RPC and clear presence."""
         if self._rpc and self._connected:
             try:
+                # Clear the presence from Discord before disconnecting
+                self._rpc.clear()
+                self.status_changed.emit("Cleared Discord presence")
+            except Exception as e:
+                # If clear fails, still try to close
+                pass
+            
+            try:
+                # Close the connection
                 self._rpc.close()
                 self.status_changed.emit("Disconnected from Discord")
-            except:
+            except Exception as e:
                 pass
+        
         self._rpc = None
         self._connected = False
         

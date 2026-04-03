@@ -292,7 +292,6 @@ class LinuxChatbox(QMainWindow):
 
         # VRChat OSC listener worker
         self._vrchat_worker = VRChatWorker()
-        self._vrchat_worker.world_updated.connect(self._on_vrchat_world_updated)
         self._vrchat_worker.error_occurred.connect(self._on_vrchat_error)
         self._vrchat_worker.set_vrchat_port(self._vrchat_port)
         self._vrchat_worker.start()
@@ -319,7 +318,6 @@ class LinuxChatbox(QMainWindow):
         # Restore persisted settings
         self.media_tab.port_spin.setValue(self._loaded_port)
         self._worker.set_osc_port(self._loaded_port)
-        self.discord_tab.vrchat_port_spin.setValue(self._vrchat_port)
         self.discord_tab.enable_btn.setChecked(self._discord_enabled)
         if self._discord_enabled:
             self.discord_tab.enable_btn.setText("⏹ Disable Discord RPC")
@@ -384,7 +382,6 @@ class LinuxChatbox(QMainWindow):
         
         # Connect Discord tab signals
         self.discord_tab.enable_btn.clicked.connect(self._on_discord_toggle)
-        self.discord_tab.vrchat_port_spin.valueChanged.connect(self._on_vrchat_port_changed)
 
     def _on_track_updated(self, track):
         """Handle track update from worker."""
@@ -466,21 +463,6 @@ class LinuxChatbox(QMainWindow):
             self.discord_tab.update_preview("Discord RPC disabled")
             self._set_status("Discord RPC disabled", "neutral")
         self._save_all_config()
-
-    def _on_vrchat_port_changed(self, port):
-        """Handle VRChat OSC port change."""
-        self._vrchat_port = port
-        # Note: Changing port requires restart of VRChat worker
-        # For now, just save the config - user can restart app
-        self._save_all_config()
-        self._set_status(f"VRChat port changed to {port} (restart app to apply)", "neutral")
-
-    def _on_vrchat_world_updated(self, world_name, player_count):
-        """Handle VRChat world update."""
-        self._discord_worker.set_vrchat_data(world_name, player_count)
-        self.discord_tab.update_vrchat_data(world_name, player_count)
-        # Update preview
-        self._update_discord_preview()
 
     def _on_discord_status_changed(self, status):
         """Handle Discord connection status change."""
