@@ -13,6 +13,7 @@ Display your currently playing music in VRChat's chatbox using OSC. Works with a
 
 - 🎵 **MPRIS Integration** — Automatically detects any Linux media player via D-Bus
 - 🎮 **VRChat OSC** — Sends formatted messages to VRChat chatbox in real-time
+- 💬 **Discord Rich Presence** — Display VRChat world, player count, and music in Discord
 - 🎨 **Customizable Display** — Configure prefix, separator, time format, and volume display
 - 🎛️ **Media Controls** — Play/pause, next, previous, and volume control from the GUI
 - 💾 **Persistent Config** — Settings saved to `~/.config/linuxchatbox/config.json`
@@ -29,6 +30,7 @@ Display your currently playing music in VRChat's chatbox using OSC. Works with a
 - **PyQt6**
 - **dbus-python**
 - **python-osc**
+- **pypresence** (for Discord Rich Presence)
 - **PulseAudio** (`pactl`) or **PipeWire** (`wpctl`) for volume control
 
 Most dependencies are likely already installed on your system.
@@ -119,7 +121,50 @@ Any application that supports MPRIS2 will work automatically:
 - Show/hide volume level
 - Custom idle message
 
+**Discord Tab:**
+
+- Enable/disable Discord Rich Presence
+- VRChat OSC listener port (default: 9001)
+- Real-time world and player count display
+- Discord presence preview
+
 All settings are automatically saved to `~/.config/linuxchatbox/config.json`.
+
+---
+
+## 💬 Discord Rich Presence
+
+LinuxChatbox can display your VRChat activity and currently playing music in Discord!
+
+### What It Shows
+
+- **VRChat World Name** — The world you're currently in
+- **Player Count** — How many players are in the world with you
+- **Current Song** — The music you're listening to (title and artist)
+- **Custom Icon** — Static image configured by the app developer
+
+### Setup
+
+**No Discord Developer Portal setup required!** The app uses a pre-configured Discord application.
+
+1. Enable Discord Rich Presence in the **Discord tab**
+2. Make sure Discord is running
+3. Configure VRChat to send OSC data:
+   - In VRChat, go to **Settings → OSC**
+   - Enable **OSC**
+   - The app listens on port **9001** by default (configurable in Discord tab)
+
+### VRChat OSC Configuration
+
+VRChat doesn't natively send world info via OSC. To get world name and player count displayed in Discord, you'll need to use one of these methods:
+
+**Option 1: Custom OSC App**
+Use a third-party VRChat OSC tool that sends world data to the configured port.
+
+**Option 2: Manual Testing**
+You can test the Discord RPC with dummy data using OSC send tools.
+
+**Note:** The music info will still display even without VRChat world data!
 
 ---
 
@@ -335,6 +380,19 @@ which pactl wpctl
 - Check OSC port is set to 9000 (or match VRChat's config)
 - Firewall may be blocking UDP port 9000
 
+### Discord Rich Presence not working
+
+- Make sure Discord desktop app is running (web version doesn't support RPC)
+- Check if Discord RPC is enabled in the Discord tab
+- Restart the app if you just started Discord
+- Port 9001 might be in use by another app (change in Discord tab settings)
+
+### VRChat world info not showing in Discord
+
+- VRChat doesn't natively send world info via OSC
+- You need a custom OSC tool or world script to send world data
+- Music will still display even without VRChat world info
+
 ---
 
 ## 🚀 Planned Features
@@ -344,6 +402,7 @@ which pactl wpctl
 - **System Tab** — CPU and RAM usage display
 - **Window Tab** — Currently focused application name
 - **AppImage/Flatpak** — Easy distribution for all Linux distros
+- **Enhanced VRChat Integration** — Better world info detection
 
 ---
 

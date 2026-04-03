@@ -10,10 +10,14 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon
 
 from ..workers.media_worker import MediaWorker
+from ..workers.vrchat_worker import VRChatWorker
+from ..workers.discord_worker import DiscordWorker
+from ..workers.active_window_worker import ActiveWindowWorker
 from ..core.config import load_config, save_config
 from ..core.mpris import send_mpris_command
 from .media_tab import MediaTab
 from .options_tab import OptionsTab
+from .discord_tab import DiscordTab
 
 
 STYLESHEET = """
@@ -270,10 +274,13 @@ class LinuxChatbox(QMainWindow):
         self.setMinimumSize(480, 770)
         self.resize(480, 780)
 
-        self._opts, _loaded_port = load_config()
+        self._opts, _loaded_port, _discord_enabled, _vrchat_port = load_config()
         self._loaded_port = _loaded_port
+        self._discord_enabled = _discord_enabled
+        self._vrchat_port = _vrchat_port
         self._last_track = None
 
+        # Media worker (MPRIS polling)
         self._worker = MediaWorker(self._opts)
         self._worker.track_updated.connect(self._on_track_updated)
         self._worker.idle_triggered.connect(self._on_idle_triggered)
@@ -283,15 +290,39 @@ class LinuxChatbox(QMainWindow):
         self._worker.interval_changed.connect(self._on_interval_changed)
         self._worker.start()
 
+        # VRChat OSC listener worker
+        self._vrchat_worker = VRChatWorker()
+        self._vrchat_worker.world_updated.connect(self._on_vrchat_world_updated)
+        self._vrchat_worker.error_occurred.connect(self._on_vrchat_error)
+        self._vrchat_worker.set_vrchat_port(self._vrchat_port)
+        self._vrchat_worker.start()
+
+        # Discord RPC worker
+        self._discord_worker = DiscordWorker()
+        self._discord_worker.status_changed.connect(self._on_discord_status_changed)
+        self._discord_worker.error_occurred.connect(self._on_discord_error)
+        self._discord_worker.set_enabled(self._discord_enabled)
+        self._discord_worker.start()
+
+        # Active window worker
+        self._active_window_worker = ActiveWindowWorker()
+        self._active_window_worker.window_changed.connect(self._on_active_window_changed)
+        self._active_window_worker.error_occurred.connect(self._on_window_error)
+        self._active_window_worker.start()
+
         self._build_ui()
         self.setStyleSheet(STYLESHEET)
         
         # Set window icon
         self._set_window_icon()
         
-        # Restore persisted OSC port
+        # Restore persisted settings
         self.media_tab.port_spin.setValue(self._loaded_port)
         self._worker.set_osc_port(self._loaded_port)
+        self.discord_tab.vrchat_port_spin.setValue(self._vrchat_port)
+        self.discord_tab.enable_btn.setChecked(self._discord_enabled)
+        if self._discord_enabled:
+            self.discord_tab.enable_btn.setText("⏹ Disable Discord RPC")
 
     def _set_window_icon(self):
         """Set the window icon from the resources directory."""
@@ -333,9 +364,11 @@ class LinuxChatbox(QMainWindow):
         self.tabs.setDocumentMode(True)
         self.media_tab = MediaTab(self._opts)
         self.options_tab = OptionsTab(self._opts, self._on_options_changed)
+        self.discord_tab = DiscordTab()
         
         self.tabs.addTab(self.media_tab, "Media")
         self.tabs.addTab(self.options_tab, "Options")
+        self.tabs.addTab(self.discord_tab, "Discord")
         root.addWidget(self.tabs)
 
         self.status_bar = QStatusBar()
@@ -348,12 +381,25 @@ class LinuxChatbox(QMainWindow):
         self.media_tab.btn_prev.clicked.connect(lambda: self._cmd_mpris("Previous"))
         self.media_tab.btn_play.clicked.connect(lambda: self._cmd_mpris("PlayPause"))
         self.media_tab.btn_next.clicked.connect(lambda: self._cmd_mpris("Next"))
+        
+        # Connect Discord tab signals
+        self.discord_tab.enable_btn.clicked.connect(self._on_discord_toggle)
+        self.discord_tab.vrchat_port_spin.valueChanged.connect(self._on_vrchat_port_changed)
 
     def _on_track_updated(self, track):
         """Handle track update from worker."""
         self._last_track = track
         self.media_tab.update_track_display(track)
         self.options_tab.set_last_track(track)
+        
+        # Update Discord worker with song info
+        if track and track.get("title"):
+            self._discord_worker.set_song_data(
+                track["title"],
+                track.get("artist")
+            )
+            # Update Discord preview
+            self._update_discord_preview()
         
         svc = track["service"].replace("org.mpris.MediaPlayer2.", "")
         self._set_status(f"Detected: {track['title']} [{svc}]", "ok")
@@ -399,12 +445,95 @@ class LinuxChatbox(QMainWindow):
     def _on_port_changed(self, port):
         """Handle OSC port change."""
         self._worker.set_osc_port(port)
-        save_config(self._opts, port)
+        self._save_all_config()
         self._set_status(f"OSC port changed to {port}", "neutral")
         
     def _on_options_changed(self):
         """Handle options change from options tab."""
-        save_config(self._opts, self.media_tab.port_spin.value())
+        self._save_all_config()
+
+    def _on_discord_toggle(self, checked):
+        """Handle Discord RPC toggle."""
+        self._discord_enabled = checked
+        self._discord_worker.set_enabled(checked)
+        if checked:
+            self.discord_tab.enable_btn.setText("⏹ Disable Discord RPC")
+            self._set_status("Discord RPC enabled", "ok")
+            # Update preview when enabled
+            self._update_discord_preview()
+        else:
+            self.discord_tab.enable_btn.setText("▶ Enable Discord RPC")
+            self.discord_tab.update_preview("Discord RPC disabled")
+            self._set_status("Discord RPC disabled", "neutral")
+        self._save_all_config()
+
+    def _on_vrchat_port_changed(self, port):
+        """Handle VRChat OSC port change."""
+        self._vrchat_port = port
+        # Note: Changing port requires restart of VRChat worker
+        # For now, just save the config - user can restart app
+        self._save_all_config()
+        self._set_status(f"VRChat port changed to {port} (restart app to apply)", "neutral")
+
+    def _on_vrchat_world_updated(self, world_name, player_count):
+        """Handle VRChat world update."""
+        self._discord_worker.set_vrchat_data(world_name, player_count)
+        self.discord_tab.update_vrchat_data(world_name, player_count)
+        # Update preview
+        self._update_discord_preview()
+
+    def _on_discord_status_changed(self, status):
+        """Handle Discord connection status change."""
+        self.discord_tab.update_status(status)
+        # Update preview when connection status changes
+        if "Connected" in status:
+            self._update_discord_preview()
+
+    def _on_active_window_changed(self, window_name):
+        """Handle active window change."""
+        # Update Discord worker with new window
+        self._discord_worker.set_active_window(window_name)
+        # Update preview
+        self._update_discord_preview()
+
+    def _on_window_error(self, err):
+        """Handle active window detection error."""
+        # Silently ignore window detection errors - they're not critical
+        pass
+
+    def _update_discord_preview(self):
+        """Update the Discord preview in the UI."""
+        if not self._discord_enabled:
+            self.discord_tab.update_preview("Discord RPC disabled")
+            return
+            
+        from ..core.discord_rpc import build_discord_presence
+        
+        presence = build_discord_presence(
+            song_title=self._discord_worker._song_title,
+            song_artist=self._discord_worker._song_artist,
+            active_window=self._discord_worker._active_window
+        )
+        
+        preview = f"Details: {presence.get('details', 'N/A')}\nState: {presence.get('state', 'N/A')}"
+        self.discord_tab.update_preview(preview)
+
+    def _on_vrchat_error(self, err):
+        """Handle VRChat worker error."""
+        self._set_status(f"⚠ VRChat: {err}", "error")
+
+    def _on_discord_error(self, err):
+        """Handle Discord worker error."""
+        self._set_status(f"⚠ Discord: {err}", "error")
+
+    def _save_all_config(self):
+        """Save all configuration settings."""
+        save_config(
+            self._opts,
+            self.media_tab.port_spin.value(),
+            self._discord_enabled,
+            self._vrchat_port
+        )
 
     def _cmd_mpris(self, command):
         """Execute MPRIS command."""
@@ -435,4 +564,10 @@ class LinuxChatbox(QMainWindow):
         """Handle window close."""
         self._worker.stop()
         self._worker.wait(2000)
+        self._vrchat_worker.stop()
+        self._vrchat_worker.wait(2000)
+        self._discord_worker.stop()
+        self._discord_worker.wait(2000)
+        self._active_window_worker.stop()
+        self._active_window_worker.wait(2000)
         super().closeEvent(event)

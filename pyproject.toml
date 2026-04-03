@@ -29,6 +29,7 @@ dependencies = [
     "PyQt6>=6.0.0",
     "dbus-python>=1.2.0",
     "python-osc>=1.8.0",
+    "pypresence>=4.2.0",
 ]
 
 [project.optional-dependencies]
