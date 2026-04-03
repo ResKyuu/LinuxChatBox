@@ -30,11 +30,11 @@ class OptionsTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(10)
+        layout.setSpacing(8)
 
         fmt_group = QGroupBox("Message Format")
         fg = QFormLayout(fmt_group)
-        fg.setSpacing(10)
+        fg.setSpacing(8)
         fg.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.opt_prefix = QLineEdit(self._opts.prefix)
@@ -81,7 +81,7 @@ class OptionsTab(QWidget):
         # Idle message group
         idle_group = QGroupBox("Idle Message (when nothing is playing)")
         ig = QFormLayout(idle_group)
-        ig.setSpacing(10)
+        ig.setSpacing(8)
         ig.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.opt_idle_message = QLineEdit(self._opts.idle_message)

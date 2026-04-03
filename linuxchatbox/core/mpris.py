@@ -24,7 +24,7 @@ def get_mpris_track(service_name):
     """Get track metadata from MPRIS player.
     
     Returns:
-        dict with keys: title, artist, position_us, length_us, status, service
+        dict with keys: title, artist, position_us, length_us, status, service, art_url
         or None if failed
     """
     if not DBUS_AVAILABLE:
@@ -47,11 +47,17 @@ def get_mpris_track(service_name):
             position_us = 0
 
         length_us = int(meta.get("mpris:length", 0))
+        
+        # Get album artwork URL
+        art_url = meta.get("mpris:artUrl", "")
+        if art_url:
+            art_url = str(art_url)
 
         return {
             "title": title, "artist": artist,
             "position_us": position_us, "length_us": length_us,
             "status": status, "service": service_name,
+            "art_url": art_url,
         }
     except Exception:
         return None
@@ -97,3 +103,28 @@ def send_mpris_command(service_name, command):
             pass
     except Exception:
         pass
+
+
+def set_mpris_position(service_name, position_us):
+    """Set the playback position in microseconds.
+    
+    Args:
+        service_name: MPRIS service name
+        position_us: Position in microseconds
+    """
+    if not DBUS_AVAILABLE or not service_name:
+        return
+    try:
+        bus = dbus.SessionBus()
+        obj = bus.get_object(service_name, "/org/mpris/MediaPlayer2")
+        player = dbus.Interface(obj, "org.mpris.MediaPlayer2.Player")
+        
+        # Get current track ID
+        props = dbus.Interface(obj, "org.freedesktop.DBus.Properties")
+        meta = props.Get("org.mpris.MediaPlayer2.Player", "Metadata")
+        track_id = meta.get("mpris:trackid", "/")
+        
+        # SetPosition requires track ID and position
+        player.SetPosition(track_id, dbus.Int64(position_us))
+    except Exception:
+        pass  # Silently fail - not all players support seeking

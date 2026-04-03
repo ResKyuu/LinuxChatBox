@@ -36,12 +36,14 @@ Most dependencies are likely already installed on your system.
 ### Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/reskyuu/linuxchatbox.git
    cd linuxchatbox
    ```
 
 2. **Run the installer:**
+
    ```bash
    ./install.sh
    ```
@@ -89,6 +91,7 @@ gtk-update-icon-cache ~/.local/share/icons/hicolor/ -f -t
 ### Supported Media Players
 
 Any application that supports MPRIS2 will work automatically:
+
 - Spotify
 - VLC
 - Firefox / Chrome (web players)
@@ -100,12 +103,14 @@ Any application that supports MPRIS2 will work automatically:
 ### Configuration Options
 
 **Media Tab:**
+
 - Toggle OSC sending on/off
 - Configure OSC port (default: 9000)
 - Media playback controls
 - Volume slider
 
 **Options Tab:**
+
 - Message prefix (emoji or text)
 - Title/artist separator
 - Show/hide artist name
@@ -135,6 +140,7 @@ The app runs completely standalone. Close the terminal—it keeps running!
 The default icon is a teal background with a music note. To use your own:
 
 #### Option 1: Replace the icon file
+
 ```bash
 # Copy your 256x256 PNG icon
 cp /path/to/your/icon.png ~/.local/share/icons/hicolor/256x256/apps/linuxchatbox.png
@@ -144,6 +150,7 @@ gtk-update-icon-cache ~/.local/share/icons/hicolor/ -f -t
 ```
 
 #### Option 2: Use a system icon
+
 ```bash
 # Edit the desktop file
 nano ~/.local/share/applications/linuxchatbox.desktop
@@ -157,6 +164,7 @@ update-desktop-database ~/.local/share/applications/
 ```
 
 #### Option 3: Create a custom icon with ImageMagick
+
 ```bash
 # Purple theme
 magick -size 256x256 -background '#a12c7b' -fill white -gravity center \
@@ -287,33 +295,42 @@ Currently testing is manual. To test:
 ## 🐛 Troubleshooting
 
 ### App doesn't appear in menu
+
 ```bash
 update-desktop-database ~/.local/share/applications/
 gtk-update-icon-cache ~/.local/share/icons/hicolor/ -f -t
 ```
+
 Then log out and back in.
 
 ### Command not found: linuxchatbox
+
 Add `~/.local/bin` to your PATH:
+
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
 ### No media player detected
+
 Make sure your player supports MPRIS2. Check with:
+
 ```bash
 dbus-send --session --print-reply --dest=org.freedesktop.DBus \
     /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep mpris
 ```
 
 ### Volume control not working
+
 LinuxChatbox requires PulseAudio (`pactl`) or PipeWire (`wpctl`). Check if installed:
+
 ```bash
 which pactl wpctl
 ```
 
 ### OSC not reaching VRChat
+
 - Verify VRChat is running and OSC is enabled
 - Check OSC port is set to 9000 (or match VRChat's config)
 - Firewall may be blocking UDP port 9000
@@ -341,6 +358,7 @@ MIT License — see LICENSE file for details.
 Inspired by **MagicChatbox** for Windows. LinuxChatbox brings the same functionality to Linux using native tools.
 
 Built with:
+
 - **PyQt6** — GUI framework
 - **dbus-python** — MPRIS communication
 - **python-osc** — VRChat OSC protocol
@@ -350,6 +368,7 @@ Built with:
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to:
+
 - Report bugs
 - Suggest features
 - Submit pull requests
