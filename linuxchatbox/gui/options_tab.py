@@ -32,41 +32,31 @@ class OptionsTab(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        fmt_group = QGroupBox("Message Format")
-        fg = QFormLayout(fmt_group)
-        fg.setSpacing(8)
-        fg.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        # Single consolidated group for all media-related settings
+        media_group = QGroupBox("Media Settings")
+        mg = QFormLayout(media_group)
+        mg.setSpacing(8)
+        mg.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.opt_prefix = QLineEdit(self._opts.prefix)
         self.opt_prefix.setPlaceholderText("e.g.  🎵  or  ♪  or  [Music]")
         self.opt_prefix.textChanged.connect(self._apply_options)
-        fg.addRow(_opt_label("Prefix:"), self.opt_prefix)
+        mg.addRow(_opt_label("Prefix:"), self.opt_prefix)
 
         self.opt_separator = QLineEdit(self._opts.separator)
         self.opt_separator.setPlaceholderText("e.g.   -   or   |   or   by ")
         self.opt_separator.textChanged.connect(self._apply_options)
-        fg.addRow(_opt_label("Title / Artist sep:"), self.opt_separator)
+        mg.addRow(_opt_label("Title / Artist sep:"), self.opt_separator)
 
         self.opt_show_artist = QCheckBox("Show artist name")
         self.opt_show_artist.setChecked(self._opts.show_artist)
         self.opt_show_artist.checkStateChanged.connect(self._apply_options)
-        fg.addRow("", self.opt_show_artist)
+        mg.addRow("", self.opt_show_artist)
 
         self.opt_show_time = QCheckBox("Show playback time")
         self.opt_show_time.setChecked(self._opts.show_time)
         self.opt_show_time.checkStateChanged.connect(self._apply_options)
-        fg.addRow("", self.opt_show_time)
-
-        self.opt_show_volume = QCheckBox("Show volume level")
-        self.opt_show_volume.setChecked(self._opts.show_volume)
-        self.opt_show_volume.checkStateChanged.connect(self._apply_options)
-        fg.addRow("", self.opt_show_volume)
-
-        self.opt_volume_prefix = QLineEdit(self._opts.volume_prefix)
-        self.opt_volume_prefix.setPlaceholderText("e.g.  🔊  or  Vol:")
-        self.opt_volume_prefix.setEnabled(self._opts.show_volume)
-        self.opt_volume_prefix.textChanged.connect(self._apply_options)
-        fg.addRow(_opt_label("Volume prefix:"), self.opt_volume_prefix)
+        mg.addRow("", self.opt_show_time)
 
         self.opt_time_fmt = QComboBox()
         for key in TIME_FORMATS:
@@ -74,23 +64,27 @@ class OptionsTab(QWidget):
         self.opt_time_fmt.setCurrentText(self._opts.time_format)
         self.opt_time_fmt.setEnabled(self._opts.show_time)
         self.opt_time_fmt.currentTextChanged.connect(self._apply_options)
-        fg.addRow(_opt_label("Time format:"), self.opt_time_fmt)
+        mg.addRow(_opt_label("Time format:"), self.opt_time_fmt)
 
-        layout.addWidget(fmt_group)
+        self.opt_show_volume = QCheckBox("Show volume level")
+        self.opt_show_volume.setChecked(self._opts.show_volume)
+        self.opt_show_volume.checkStateChanged.connect(self._apply_options)
+        mg.addRow("", self.opt_show_volume)
 
-        # Idle message group
-        idle_group = QGroupBox("Idle Message (when nothing is playing)")
-        ig = QFormLayout(idle_group)
-        ig.setSpacing(8)
-        ig.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self.opt_volume_prefix = QLineEdit(self._opts.volume_prefix)
+        self.opt_volume_prefix.setPlaceholderText("e.g.  🔊  or  Vol:")
+        self.opt_volume_prefix.setEnabled(self._opts.show_volume)
+        self.opt_volume_prefix.textChanged.connect(self._apply_options)
+        mg.addRow(_opt_label("Volume prefix:"), self.opt_volume_prefix)
 
         self.opt_idle_message = QLineEdit(self._opts.idle_message)
         self.opt_idle_message.setPlaceholderText("e.g.  ⏸ Looking for music...")
         self.opt_idle_message.textChanged.connect(self._apply_options)
-        ig.addRow(_opt_label("Idle message:"), self.opt_idle_message)
+        mg.addRow(_opt_label("Idle message:"), self.opt_idle_message)
 
-        layout.addWidget(idle_group)
+        layout.addWidget(media_group)
 
+        # Live preview
         live_group = QGroupBox("Live Preview")
         lg = QVBoxLayout(live_group)
         self.opt_preview = QLabel("—")

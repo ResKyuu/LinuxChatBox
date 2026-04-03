@@ -35,6 +35,12 @@ class MediaWorker(QThread):
         self._osc_client   = None
         self._last_service = None           # most recent active MPRIS service
         self._wake_event   = threading.Event()  # used for clean shutdown
+        self._custom_statuses = ["", "", "", "", ""]
+        self._custom_statuses_enabled = [False, False, False, False, False]
+        self._rotation_interval = 30
+        self._rotation_counter = 0  # Track time for rotation
+        self._current_status_index = 0  # Which status is currently displayed
+        self._playback_enabled = True  # New: control playback messages separately
         self._rebuild_osc()
 
     def set_enabled(self, enabled):
@@ -43,6 +49,61 @@ class MediaWorker(QThread):
     def set_osc_port(self, port):
         self._osc_port = port
         self._rebuild_osc()
+    
+    def set_custom_statuses(self, custom_statuses, custom_statuses_enabled, rotation_interval):
+        """Update the custom status messages with rotation."""
+        self._custom_statuses = custom_statuses
+        self._custom_statuses_enabled = custom_statuses_enabled
+        self._rotation_interval = rotation_interval
+        self._rotation_counter = 0  # Reset rotation counter
+        self._current_status_index = 0  # Reset to first status
+    
+    def set_playback_enabled(self, enabled):
+        """Enable/disable sending playback messages."""
+        self._playback_enabled = enabled
+    
+    def _get_current_status(self):
+        """Get the current status to display (handles rotation)."""
+        # Get list of enabled statuses
+        enabled_statuses = [
+            (i, self._custom_statuses[i])
+            for i in range(5)
+            if self._custom_statuses_enabled[i] and self._custom_statuses[i].strip()
+        ]
+        
+        if not enabled_statuses:
+            return None
+        
+        if len(enabled_statuses) == 1:
+            # Only one status, always return it
+            return enabled_statuses[0][1]
+        
+        # Multiple statuses - handle rotation
+        # Make sure current index is valid
+        if self._current_status_index >= len(enabled_statuses):
+            self._current_status_index = 0
+        
+        return enabled_statuses[self._current_status_index][1]
+    
+    def _update_rotation(self):
+        """Update rotation counter and advance to next status if needed."""
+        # Get list of enabled statuses
+        enabled_statuses = [
+            i for i in range(5)
+            if self._custom_statuses_enabled[i] and self._custom_statuses[i].strip()
+        ]
+        
+        if len(enabled_statuses) <= 1:
+            # No rotation needed
+            return
+        
+        # Increment rotation counter
+        self._rotation_counter += self._interval
+        
+        if self._rotation_counter >= self._rotation_interval:
+            # Time to rotate
+            self._current_status_index = (self._current_status_index + 1) % len(enabled_statuses)
+            self._rotation_counter = 0
 
     def stop(self):
         self._running = False
@@ -111,11 +172,29 @@ class MediaWorker(QThread):
         if not self._enabled or not self._osc_client:
             return
 
-        if playing_track:
-            msg = build_osc_message(playing_track, self._opts)
-        else:
-            msg = self._opts.idle_message  # paused → send idle text
+        # Update rotation (advances to next status if time elapsed)
+        self._update_rotation()
+        
+        # Get current status (handles rotation)
+        current_status = self._get_current_status()
+
+        # Build the message based on playback toggle
+        if self._playback_enabled and playing_track:
+            # Playing: send playback with current status
+            msg = build_osc_message(playing_track, self._opts, current_status or "", current_status is not None)
+        elif self._playback_enabled:
+            # Paused → send idle text with current status
+            msg = self._opts.idle_message
+            if current_status:
+                msg = current_status + "\n" + msg
             self.idle_triggered.emit()
+        else:
+            # Playback disabled → only send current status or nothing
+            if current_status:
+                msg = current_status
+            else:
+                # Nothing to send
+                return
 
         try:
             self._osc_client.send_message("/chatbox/input", [msg, True])

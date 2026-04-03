@@ -178,37 +178,30 @@ class MediaTab(QWidget):
         mg.addLayout(vol_row)
 
         layout.addWidget(media_group)
-
-        osc_group = QGroupBox("VRChat OSC")
-        og = QVBoxLayout(osc_group)
-        og.setSpacing(8)
-
-        self.toggle_btn = QPushButton("▶  Start Sending")
-        self.toggle_btn.setObjectName("toggleBtn")
-        self.toggle_btn.setCheckable(True)
-        og.addWidget(self.toggle_btn)
-
-        from PyQt6.QtWidgets import QSpinBox
-        port_row = QHBoxLayout()
-        port_lbl = QLabel("OSC Port:")
-        port_lbl.setObjectName("portLabel")
-        self.port_spin = QSpinBox()
-        self.port_spin.setRange(1024, 65535)
-        self.port_spin.setValue(9000)
-        port_row.addWidget(port_lbl)
-        port_row.addWidget(self.port_spin)
-        port_row.addStretch()
-        og.addLayout(port_row)
-
-        layout.addWidget(osc_group)
-
-        prev_group = QGroupBox("Last Sent to Chatbox")
-        pg = QVBoxLayout(prev_group)
-        self.preview_label = QLabel("—")
-        self.preview_label.setObjectName("previewLabel")
-        self.preview_label.setWordWrap(True)
-        pg.addWidget(self.preview_label)
-        layout.addWidget(prev_group)
+        
+        # Playback toggle group
+        playback_group = QGroupBox("Playback Messages")
+        pg = QVBoxLayout(playback_group)
+        pg.setSpacing(8)
+        
+        self.playback_toggle = QPushButton("✓ Send Playback Info")
+        self.playback_toggle.setObjectName("toggleBtn")
+        self.playback_toggle.setCheckable(True)
+        self.playback_toggle.setChecked(True)
+        self.playback_toggle.setStyleSheet("""
+            #toggleBtn:checked {
+                background-color: #a855f7;
+                color: #ffffff;
+            }
+        """)
+        pg.addWidget(self.playback_toggle)
+        
+        info_label = QLabel("Toggle whether playback info is sent to VRChat chatbox")
+        info_label.setStyleSheet("color: #666666; font-size: 11px;")
+        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pg.addWidget(info_label)
+        
+        layout.addWidget(playback_group)
 
         layout.addStretch()
         

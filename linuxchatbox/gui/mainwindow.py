@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFrame, QStatusBar, QTabWidget,
+    QFrame, QStatusBar, QTabWidget, QPushButton, QSpinBox,
 )
 from PyQt6.QtGui import QIcon
 
@@ -18,6 +18,7 @@ from ..core.mpris import send_mpris_command
 from .media_tab import MediaTab
 from .options_tab import OptionsTab
 from .discord_tab import DiscordTab
+from .status_tab import StatusTab
 
 
 STYLESHEET = """
@@ -274,14 +275,18 @@ class LinuxChatbox(QMainWindow):
         self.setMinimumSize(480, 770)
         self.resize(480, 780)
 
-        self._opts, _loaded_port, _discord_enabled, _vrchat_port = load_config()
+        self._opts, _loaded_port, _discord_enabled, _vrchat_port, _custom_statuses, _custom_statuses_enabled, _rotation_interval = load_config()
         self._loaded_port = _loaded_port
         self._discord_enabled = _discord_enabled
         self._vrchat_port = _vrchat_port
+        self._custom_statuses = _custom_statuses
+        self._custom_statuses_enabled = _custom_statuses_enabled
+        self._rotation_interval = _rotation_interval
         self._last_track = None
 
         # Media worker (MPRIS polling)
         self._worker = MediaWorker(self._opts)
+        self._worker.set_custom_statuses(self._custom_statuses, self._custom_statuses_enabled, self._rotation_interval)
         self._worker.track_updated.connect(self._on_track_updated)
         self._worker.idle_triggered.connect(self._on_idle_triggered)
         self._worker.no_media.connect(self._on_no_media)
@@ -316,7 +321,7 @@ class LinuxChatbox(QMainWindow):
         self._set_window_icon()
         
         # Restore persisted settings
-        self.media_tab.port_spin.setValue(self._loaded_port)
+        self.port_spin.setValue(self._loaded_port)
         self._worker.set_osc_port(self._loaded_port)
         self.discord_tab.enable_btn.setChecked(self._discord_enabled)
         if self._discord_enabled:
@@ -351,6 +356,25 @@ class LinuxChatbox(QMainWindow):
         title_lbl.setObjectName("appTitle")
         header.addWidget(title_lbl)
         header.addStretch()
+        
+        # OSC Port control in header
+        port_lbl = QLabel("OSC Port:")
+        port_lbl.setObjectName("portLabel")
+        port_lbl.setStyleSheet("font-size: 11px; color: #999999;")
+        header.addWidget(port_lbl)
+        
+        self.port_spin = QSpinBox()
+        self.port_spin.setRange(1024, 65535)
+        self.port_spin.setValue(9000)
+        self.port_spin.setFixedWidth(80)
+        header.addWidget(self.port_spin)
+        
+        # OSC toggle button in header
+        self.toggle_btn = QPushButton("▶  Start Sending")
+        self.toggle_btn.setObjectName("toggleBtn")
+        self.toggle_btn.setCheckable(True)
+        header.addWidget(self.toggle_btn)
+        
         root.addLayout(header)
 
         sep = QFrame()
@@ -363,8 +387,10 @@ class LinuxChatbox(QMainWindow):
         self.media_tab = MediaTab(self._opts)
         self.options_tab = OptionsTab(self._opts, self._on_options_changed)
         self.discord_tab = DiscordTab()
+        self.status_tab = StatusTab(self._custom_statuses, self._custom_statuses_enabled, self._rotation_interval, self._on_status_changed)
         
         self.tabs.addTab(self.media_tab, "Media")
+        self.tabs.addTab(self.status_tab, "Status")
         self.tabs.addTab(self.options_tab, "Options")
         self.tabs.addTab(self.discord_tab, "Discord")
         root.addWidget(self.tabs)
@@ -373,9 +399,12 @@ class LinuxChatbox(QMainWindow):
         self.setStatusBar(self.status_bar)
         self._set_status("Ready — waiting for media player", "neutral")
         
+        # Connect header button signals
+        self.toggle_btn.clicked.connect(self._on_toggle)
+        self.port_spin.valueChanged.connect(self._on_port_changed)
+        
         # Connect media tab signals
-        self.media_tab.toggle_btn.clicked.connect(self._on_toggle)
-        self.media_tab.port_spin.valueChanged.connect(self._on_port_changed)
+        self.media_tab.playback_toggle.clicked.connect(self._on_playback_toggle)
         self.media_tab.btn_prev.clicked.connect(lambda: self._cmd_mpris("Previous"))
         self.media_tab.btn_play.clicked.connect(lambda: self._cmd_mpris("PlayPause"))
         self.media_tab.btn_next.clicked.connect(lambda: self._cmd_mpris("Next"))
@@ -414,10 +443,9 @@ class LinuxChatbox(QMainWindow):
 
     def _on_osc_sent(self, msg):
         """Handle OSC message sent."""
-        self.media_tab.preview_label.setText(msg)
         # Only show the green tick for actual track messages, not idle spam
         if msg != self._opts.idle_message:
-            self._set_status("\u2713 OSC sent to VRChat", "ok")
+            self._set_status("✓ OSC sent to VRChat", "ok")
 
     def _on_error(self, err):
         """Handle worker error."""
@@ -431,10 +459,10 @@ class LinuxChatbox(QMainWindow):
         """Handle OSC toggle button."""
         self._worker.set_enabled(checked)
         if checked:
-            self.media_tab.toggle_btn.setText("\u23f9  Stop Sending")
+            self.toggle_btn.setText("⏹  Stop Sending")
             self._set_status("Sending to VRChat enabled", "ok")
         else:
-            self.media_tab.toggle_btn.setText("\u25b6  Start Sending")
+            self.toggle_btn.setText("▶  Start Sending")
             if self._last_track is None:
                 self.media_tab.show_no_media_state()
             self._set_status("Sending to VRChat disabled", "neutral")
@@ -444,10 +472,29 @@ class LinuxChatbox(QMainWindow):
         self._worker.set_osc_port(port)
         self._save_all_config()
         self._set_status(f"OSC port changed to {port}", "neutral")
+    
+    def _on_playback_toggle(self, checked):
+        """Handle playback toggle."""
+        self._worker.set_playback_enabled(checked)
+        if checked:
+            self.media_tab.playback_toggle.setText("✓ Send Playback Info")
+            self._set_status("Playback messages enabled", "ok")
+        else:
+            self.media_tab.playback_toggle.setText("✗ Send Playback Info")
+            self._set_status("Playback messages disabled", "neutral")
         
     def _on_options_changed(self):
         """Handle options change from options tab."""
         self._save_all_config()
+    
+    def _on_status_changed(self):
+        """Handle status change from status tab."""
+        self._custom_statuses = self.status_tab.get_custom_statuses()
+        self._custom_statuses_enabled = self.status_tab.get_custom_statuses_enabled()
+        self._rotation_interval = self.status_tab.get_rotation_interval()
+        self._worker.set_custom_statuses(self._custom_statuses, self._custom_statuses_enabled, self._rotation_interval)
+        self._save_all_config()
+        self._set_status("Custom status updated", "ok")
 
     def _on_discord_toggle(self, checked):
         """Handle Discord RPC toggle."""
@@ -512,9 +559,12 @@ class LinuxChatbox(QMainWindow):
         """Save all configuration settings."""
         save_config(
             self._opts,
-            self.media_tab.port_spin.value(),
+            self.port_spin.value(),
             self._discord_enabled,
-            self._vrchat_port
+            self._vrchat_port,
+            self._custom_statuses,
+            self._custom_statuses_enabled,
+            self._rotation_interval
         )
 
     def _cmd_mpris(self, command):
