@@ -117,7 +117,7 @@ nix-env -iA nixpkgs.python3
 
 LinuxChatbox is licensed under the MIT License. You are free to distribute, modify, and contribute to this project as you wish.
 
-Inspired by (MagicChatbox)[https://github.com/BoiHanny/vrcosc-magicchatbox] for Windows.
+Inspired by [MagicChatbox](https://github.com/BoiHanny/vrcosc-magicchatbox) for Windows.
 
 ---
 
