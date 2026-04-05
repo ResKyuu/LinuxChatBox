@@ -7,7 +7,7 @@ echo "🎮 Installing LinuxChatbox..."
 
 # Install Python package
 echo "📦 Installing Python package..."
-pip install -e . --user
+python3 -m pip install -e . --user
 
 # Install desktop file
 echo "🖥️  Installing desktop integration..."
